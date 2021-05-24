@@ -46,13 +46,13 @@ public class GameOfLife extends Application {
         PEN, ERASER
     }
 
-    public ToggleGroup getSelectedTool() {
-        return selectedTool;
-    }
-
-    public void setSelectedTool(ToggleGroup selectedTool) {
-        this.selectedTool = selectedTool;
-    }
+//    public ToggleGroup getSelectedTool() {
+//        return selectedTool;
+//    }
+//
+//    public void setSelectedTool(ToggleGroup selectedTool) {
+//        this.selectedTool = selectedTool;
+//    }
 
     private static final String TITLE = "Conway's Game Of Life - Skeleton";
 
@@ -112,17 +112,19 @@ public class GameOfLife extends Application {
         //TODO call setOnKeyPressed on grid and pass a lambda to it.
 
         generation = 0;
-        KeyCodeCombination returnComb =  new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN);
+        KeyCodeCombination returnComb = new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN);
 
-                grid.setOnKeyPressed(e -> {
+        grid.setOnKeyPressed(e -> {
 //            If user pressed space, if will go to the next round.
             if (e.getCode() == KeyCode.SPACE) {
                 generationCount.setText(++generation + "");
             }
-            if(returnComb.match(e)){
-//                System.out.println("Matched! ");
-                undoButton.fire();
+
+        root.setOnKeyPressed(event -> {
+            if (returnComb.match(event)) {
+                undoProcess();
             }
+        });
 
         });
         //In the lambda if the key pressed is a space, increment the value of
@@ -134,6 +136,19 @@ public class GameOfLife extends Application {
         //This will return the code for the key pressed.
         //Now compare the code to one of the static values in the class KeyCode.
         //In this case it will be space.
+    }
+
+    public void undoProcess(){
+        for (int i = 0; i < grid.getChildren().stream().count(); i++) {
+            grid.getChildren().get(i).setId(backupGridStyleArray[i]);
+        }
+        //This step is to make the initially pressed unit reverse to the opposite style.
+        if (pressedGirdUnitIndex != -1) {
+            grid.getChildren().get(pressedGirdUnitIndex).setId(
+                    grid.getChildren().get(pressedGirdUnitIndex).getId() == CELL_ALIVE_STYLE_ID ?
+                            CELL_DEAD_STYLE_ID : CELL_ALIVE_STYLE_ID
+            );
+        }
     }
 
     public void start(Stage primaryStage) throws Exception {
@@ -214,19 +229,8 @@ public class GameOfLife extends Application {
 
         undoButton = new Button("Undo(Ctrl+Z)");
         undoButton.setMinHeight(32);
-
         undoButton.setOnAction(event -> {
-//            System.out.println("undo button clicked.");
-            for (int i = 0; i < grid.getChildren().stream().count(); i++) {
-                grid.getChildren().get(i).setId(backupGridStyleArray[i]);
-            }
-            //This step is to make the initially pressed unit reverse to the opposite style.
-            if (pressedGirdUnitIndex != -1) {
-                grid.getChildren().get(pressedGirdUnitIndex).setId(
-                        grid.getChildren().get(pressedGirdUnitIndex).getId() == CELL_ALIVE_STYLE_ID ?
-                                CELL_DEAD_STYLE_ID : CELL_ALIVE_STYLE_ID
-                );
-            }
+            undoProcess();
         });
 
 
@@ -255,7 +259,7 @@ public class GameOfLife extends Application {
         //getItems method will return a list. use addAll on it to add all the Nodes.
 
         Separator separator = new Separator();
-        menuBar.getItems().addAll(undoButton, penToolButton, separator, eraseToolButton, restCanvasButton, fillerPane, popDialogButton);
+        menuBar.getItems().addAll(undoButton, penToolButton, eraseToolButton, separator, restCanvasButton, fillerPane, popDialogButton);
 
     }
 
