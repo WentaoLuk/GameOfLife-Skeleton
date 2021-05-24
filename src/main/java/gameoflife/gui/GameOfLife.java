@@ -14,10 +14,7 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
@@ -60,6 +57,10 @@ public class GameOfLife extends Application {
     private static final String TITLE = "Conway's Game Of Life - Skeleton";
 
     private GridPane grid;
+    private String[] backupGridStyleArray;
+    private int pressedGirdUnitIndex;
+
+    private Button undoButton;
     private BorderPane root;
     private ToolBar menuBar;
     private ToolBar statusBar;
@@ -76,12 +77,11 @@ public class GameOfLife extends Application {
 
         cells = new Label[CELL_COUNT_ROW][CELL_COUNT_COL];
 
-        menuBar = new ToolBar(
-                new Button("test button")
-        );
-        grid = new GridPane();
-//        grid.setPadding(new Insets(10, 10, 10, 10));
+        menuBar = new ToolBar();
 
+        grid = new GridPane();
+
+        //set up the backup grid for later use.
         statusBar = new ToolBar();
 
         selectedTool = new ToggleGroup();
@@ -93,6 +93,13 @@ public class GameOfLife extends Application {
 
         createStatusBar();
 
+        backupGridStyleArray = new String[CELL_COUNT_ROW * CELL_COUNT_COL];
+
+        for (int i = 0; i < grid.getChildren().stream().count(); i++) {
+            backupGridStyleArray[i] = grid.getChildren().get(i).getId();
+        }
+        // initialize the index as -1 and verify it later when the undo function is triggered.
+        pressedGirdUnitIndex = -1;
 
         root = new BorderPane();
 
@@ -105,12 +112,18 @@ public class GameOfLife extends Application {
         //TODO call setOnKeyPressed on grid and pass a lambda to it.
 
         generation = 0;
+        KeyCodeCombination returnComb =  new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN);
 
-        grid.setOnKeyPressed(e -> {
+                grid.setOnKeyPressed(e -> {
 //            If user pressed space, if will go to the next round.
             if (e.getCode() == KeyCode.SPACE) {
                 generationCount.setText(++generation + "");
             }
+            if(returnComb.match(e)){
+//                System.out.println("Matched! ");
+                undoButton.fire();
+            }
+
         });
         //In the lambda if the key pressed is a space, increment the value of
         //generation and set it on generationCount label.
@@ -130,8 +143,6 @@ public class GameOfLife extends Application {
         infoDialog.setContentText(Files.readString(Paths.get(CREDIT_TEXT_PATH)));
         // scene holds all JavaFX components that need to be displayed in Stage.
 
-        StackPane layout = new StackPane();
-
         Scene scene = new Scene(root);
 
         scene.getStylesheets().add("root.css");
@@ -144,7 +155,7 @@ public class GameOfLife extends Application {
         primaryStage.addEventHandler(KeyEvent.KEY_RELEASED, (KeyEvent event) -> {
 
             if (!event.isConsumed() && KeyCode.ESCAPE == event.getCode()) {
-//                primaryStage.hide();
+                primaryStage.hide();
             }
         });
 
@@ -160,6 +171,7 @@ public class GameOfLife extends Application {
      * Helper method to create the ToolBar at the top. This will hold the options.
      */
     private void createToolBar() {
+
         //TODO use the method createButton to create two ToggleButton. --Done
         //First button will have id of BUTTON_EDDIT_ICON_STYLE_ID, not focusable, for the Pen Tool, and no event handler.
         //second button will have id of BUTTON_ERASE_ICON_STYLE_ID, not focusable, for the ERASER Tool, and no event handler.
@@ -195,9 +207,26 @@ public class GameOfLife extends Application {
 
         restCanvasButton = createButton(restCanvasButton.getClass(), BUTTON_RESET_ICON_STYLE_ID,
                 false, null, (ActionEvent e) -> {
-                    for (Node unit: grid.getChildren()){
+                    for (Node unit : grid.getChildren()) {
                         unit.setId(CELL_DEAD_STYLE_ID);
                     }
+                });
+
+        undoButton = new Button("Undo(Ctrl+Z)");
+        undoButton.setMinHeight(32);
+
+        undoButton.setOnAction(event -> {
+//            System.out.println("undo button clicked.");
+            for (int i = 0; i < grid.getChildren().stream().count(); i++) {
+                grid.getChildren().get(i).setId(backupGridStyleArray[i]);
+            }
+            //This step is to make the initially pressed unit reverse to the opposite style.
+            if (pressedGirdUnitIndex != -1) {
+                grid.getChildren().get(pressedGirdUnitIndex).setId(
+                        grid.getChildren().get(pressedGirdUnitIndex).getId() == CELL_ALIVE_STYLE_ID ?
+                                CELL_DEAD_STYLE_ID : CELL_ALIVE_STYLE_ID
+                );
+            }
         });
 
 
@@ -226,7 +255,7 @@ public class GameOfLife extends Application {
         //getItems method will return a list. use addAll on it to add all the Nodes.
 
         Separator separator = new Separator();
-        menuBar.getItems().addAll(penToolButton, separator, eraseToolButton, restCanvasButton, fillerPane, popDialogButton);
+        menuBar.getItems().addAll(undoButton, penToolButton, separator, eraseToolButton, restCanvasButton, fillerPane, popDialogButton);
 
     }
 
@@ -294,7 +323,18 @@ public class GameOfLife extends Application {
                 grid.add(l, col, row);
             }
         }
+
+        // Whenever the mouse is released, the program will take a "screenshot" of the current pattern as backup.
+        //However, this will not correctly save the grid unit on which the user started drawing. So I used
+        //pressedGirdUnitIndex to take the index and reverse the unit's css style when the undo function is triggered.
+        grid.setOnMousePressed(event -> {
+            //loop to save
+            for (int i = 0; i < grid.getChildren().stream().count(); i++) {
+                backupGridStyleArray[i] = grid.getChildren().get(i).getId();
+            }
+        });
     }
+
 
     /**
      * This is a utility method for creating a Label.
@@ -314,6 +354,7 @@ public class GameOfLife extends Application {
 
         //TODO call setId on label and pass to it CELL_DEAD_STYLE_ID.
         //this is to let JAVAFX know what CSS style it should attached to this Node.
+
         label.setId(CELL_DEAD_STYLE_ID);
 
         //TODO we want the label to be execute some code every time the mouse is
@@ -321,28 +362,30 @@ public class GameOfLife extends Application {
         //TODO call the to two methods setOnMouseDragEntered and setOnMousePressed
         //on the label and pass to it a lambda which calls the method labelMouseAction.
 
-
-        label.setOnMousePressed(event -> {
-            labelMouseAction(event, label, row, col);
-        });
-
-        //1. First set up full drag
+        //1. First set up full drag as a basic listener
         label.setOnDragDetected(event -> {
             label.startFullDrag();
         });
-        //2. set up each drag's reaction on the label.
-        label.setOnMouseDragEntered(event -> {
+
+        label.setOnMousePressed(event -> {
             labelMouseAction(event, label, row, col);
+            //This will set the index into the button index clicked.
+            if (selectedTool.getSelectedToggle() != null) {
+                pressedGirdUnitIndex = row * CELL_COUNT_COL + col;//heyyy
+            }
         });
+        //2. set up each drag's reaction on the label.
+        label.setOnMouseDragEntered(e -> {
+            labelMouseAction(e, label, row, col);
+        });
+
+
         //TODO the issue at this point is if we try to drag the mouse over the labels
         //we wont get a continues drawing, only the initial label will change.
         //This is simply how JavaFX works, what we need to tell it is if we detect
         //a mouse drag allow the event to be also passed to other labels.
         //This is by calling setOnDragDetected on the label. Then pass a lambda to it
         //and in side of the lambda call the method startFullDrag on the label.
-
-
-
 
 
         //TODO finally return the created label.
@@ -353,9 +396,9 @@ public class GameOfLife extends Application {
      * this method is used to determine the action of the mouse on a given label.
      *
      * @param event
-     * @param l   - the effected label
-     * @param row - the row at which the label is placed.
-     * @param col - the column at which the label is placed.
+     * @param l     - the effected label
+     * @param row   - the row at which the label is placed.
+     * @param col   - the column at which the label is placed.
      */
     private void labelMouseAction(MouseEvent event, Label l, int row, int col) {
         //TODO an action can only occur of a button from the selectedTool is selected.
@@ -367,16 +410,17 @@ public class GameOfLife extends Application {
             //The following will recognize what button the user has clicked.
             //if the pen button is pressed the left key will draw and right click will erase.
             if (selectedTool.getSelectedToggle().getUserData() == Tool.PEN) {
-                if (event.getButton() == MouseButton.PRIMARY){
-                l.setId(CELL_ALIVE_STYLE_ID);
+                if (event.getButton() == MouseButton.PRIMARY) {
+                    l.setId(CELL_ALIVE_STYLE_ID);
                 }
-                if (event.getButton() == MouseButton.SECONDARY){
+                if (event.getButton() == MouseButton.SECONDARY) {
                     l.setId(CELL_DEAD_STYLE_ID);
                 }
             }
             if (selectedTool.getSelectedToggle().getUserData() == Tool.ERASER) {
                 l.setId(CELL_DEAD_STYLE_ID);
             }
+
         }
 
         //TODO depending on what tool is selected change the id of label
