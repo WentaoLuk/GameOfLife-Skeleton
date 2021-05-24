@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 
 import javafx.application.Application;
 import javafx.event.ActionEvent;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -15,6 +16,8 @@ import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
@@ -77,7 +80,7 @@ public class GameOfLife extends Application {
                 new Button("test button")
         );
         grid = new GridPane();
-        grid.setPadding(new Insets(10, 10, 10, 10));
+//        grid.setPadding(new Insets(10, 10, 10, 10));
 
         statusBar = new ToolBar();
 
@@ -129,12 +132,9 @@ public class GameOfLife extends Application {
 
         StackPane layout = new StackPane();
 
-
         Scene scene = new Scene(root);
 
-
         scene.getStylesheets().add("root.css");
-
 
         primaryStage.setScene(scene);
 
@@ -193,7 +193,6 @@ public class GameOfLife extends Application {
 
         Button restCanvasButton = new Button();
 
-        //TODO YET TO FINISH
         restCanvasButton = createButton(restCanvasButton.getClass(), BUTTON_RESET_ICON_STYLE_ID,
                 false, null, (ActionEvent e) -> {
                     for (Node unit: grid.getChildren()){
@@ -322,11 +321,19 @@ public class GameOfLife extends Application {
         //TODO call the to two methods setOnMouseDragEntered and setOnMousePressed
         //on the label and pass to it a lambda which calls the method labelMouseAction.
 
+
         label.setOnMousePressed(event -> {
-            labelMouseAction(label, row, col);
+            labelMouseAction(event, label, row, col);
         });
 
-
+        //1. First set up full drag
+        label.setOnDragDetected(event -> {
+            label.startFullDrag();
+        });
+        //2. set up each drag's reaction on the label.
+        label.setOnMouseDragEntered(event -> {
+            labelMouseAction(event, label, row, col);
+        });
         //TODO the issue at this point is if we try to drag the mouse over the labels
         //we wont get a continues drawing, only the initial label will change.
         //This is simply how JavaFX works, what we need to tell it is if we detect
@@ -334,9 +341,10 @@ public class GameOfLife extends Application {
         //This is by calling setOnDragDetected on the label. Then pass a lambda to it
         //and in side of the lambda call the method startFullDrag on the label.
 
-        label.setOnMouseDragEntered(event -> {
-            label.startFullDrag();
-        });
+
+
+
+
         //TODO finally return the created label.
         return label;
     }
@@ -344,19 +352,27 @@ public class GameOfLife extends Application {
     /**
      * this method is used to determine the action of the mouse on a given label.
      *
+     * @param event
      * @param l   - the effected label
      * @param row - the row at which the label is placed.
      * @param col - the column at which the label is placed.
      */
-    private void labelMouseAction(Label l, int row, int col) {
+    private void labelMouseAction(MouseEvent event, Label l, int row, int col) {
         //TODO an action can only occur of a button from the selectedTool is selected.
         //use the method getSelectedToggle in selectedTool to see if any button is selected.
         //if nothing is selected return.
         if (selectedTool.getSelectedToggle() == null) {
             return;
         } else {
+            //The following will recognize what button the user has clicked.
+            //if the pen button is pressed the left key will draw and right click will erase.
             if (selectedTool.getSelectedToggle().getUserData() == Tool.PEN) {
+                if (event.getButton() == MouseButton.PRIMARY){
                 l.setId(CELL_ALIVE_STYLE_ID);
+                }
+                if (event.getButton() == MouseButton.SECONDARY){
+                    l.setId(CELL_DEAD_STYLE_ID);
+                }
             }
             if (selectedTool.getSelectedToggle().getUserData() == Tool.ERASER) {
                 l.setId(CELL_DEAD_STYLE_ID);
