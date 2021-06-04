@@ -104,13 +104,9 @@ public class GameOfLife extends Application {
             if (e.getCode() == KeyCode.SPACE) {
                 generationCount.setText(++generation + "");
             }
-
-            root.setOnKeyPressed(event -> {
-                if (returnComb.match(event)) {
-                    undoProcess();
-                }
-            });
-
+            if (returnComb.match(e)) {
+                undoProcess();
+            }
         });
         //In the lambda if the key pressed is a space, increment the value of
         //generation and set it on generationCount label.
@@ -195,8 +191,16 @@ public class GameOfLife extends Application {
                     }
                 });
 
+        KeyCodeCombination returnComb = new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN);
         Button undoButton = new Button("Undo(Ctrl+Z)");
+
         undoButton.setMinHeight(32);
+//        undoButton.setOnKeyPressed(event -> {
+//                    if (returnComb.match(event)) {
+//                        undoProcess();
+//                    }
+//                }
+//        );
         undoButton.setOnAction(event -> {
             undoProcess();
         });
@@ -214,7 +218,7 @@ public class GameOfLife extends Application {
         });
 
         Separator separator = new Separator();
-        menuBar.getItems().addAll(undoButton, penToolButton, eraseToolButton, separator, restCanvasButton, fillerPane, popDialogButton);
+        menuBar.getItems().addAll(penToolButton, eraseToolButton, separator, restCanvasButton, fillerPane, popDialogButton);
 
     }
 
@@ -285,7 +289,6 @@ public class GameOfLife extends Application {
             }
         });
     }
-
 
     /**
      * This is a utility method for creating a Label.
